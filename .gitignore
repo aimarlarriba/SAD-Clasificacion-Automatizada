@@ -1,0 +1,20 @@
+# --- Datasets ---
+# Prohibido subir los datos de la práctica según el guion
+iris.csv
+Santander*.csv
+*.csv
+# Pero queremos permitir el CSV de resultados
+!resultados_entrenamiento.csv
+
+# --- Modelos y Binarios ---
+# Los modelos se deben generar ejecutando el script, no subirse
+*.sav
+*.pkl
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+
+# --- Sistema ---
+.DS_Store
+Thumbs.db
