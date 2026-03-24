@@ -1,12 +1,12 @@
 {
   "algorithm": "todos",
   "preprocessing": {
-    "target_variable": "Especie",
+    "target_variable": "nombre",
     "drop_features": [],
     "missing_values": "impute",
-    "impute_strategy": "mean",
+    "impute_strategy": "median",
     "scaling": "standard",
-    "sampling": "none"
+    "sampling": "oversampling"
   },
   "hyperparameters": {
     "knn": {
@@ -17,11 +17,11 @@
       "weights": ["uniform", "distance"]
     },
     "trees": {
-      "max_depth": [3, 6, 9],
-      "min_samples_leaf": [1, 2]
+      "max_depth": [5, 10, 15],
+      "min_samples_leaf": [2, 5]
     },
     "naive_bayes": {
-      "n_bins": 5
+      "n_bins": 10
     }
   }
 }

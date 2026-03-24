@@ -26,10 +26,16 @@ def train():
     target = conf_pre['target_variable']
     algoritmo_elegido = config.get('algorithm', 'todos')
 
+    # --- CARGA Y FILTRADO DINÁMICO ---
     df = pd.read_csv(f_data)
-    X = pd.get_dummies(df.drop(columns=[target]), drop_first=True)
 
-    # Entrenamiento LabelEncoder que se guardará
+    # Eliminar atributos según el JSON
+    columnas_borrar = [c for c in conf_pre.get('drop_features', []) if c in df.columns]
+    df = df.drop(columns=columnas_borrar)
+
+    X = pd.get_dummies(df.drop(columns=[target]), drop_first=True)
+    X = X.loc[:, (X != X.iloc[0]).any()]
+
     le = LabelEncoder()
     y = le.fit_transform(df[target].astype(str))
 
@@ -40,20 +46,29 @@ def train():
     X_train = imputer.fit_transform(X_train)
     X_dev = imputer.transform(X_dev)
 
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_dev_scaled = scaler.transform(X_dev)
+    # --- Preproceso base ---
+    scaler = None
+    X_train_prep = X_train  # Datos imputados
+    X_dev_prep = X_dev
+    if conf_pre.get('scaling') == "standard":
+        scaler = StandardScaler()
+        X_train_prep = scaler.fit_transform(X_train)
+        X_dev_prep = scaler.transform(X_dev)
 
-    # Balanceo (Undersampling)
+    # --- Balanceo (Undersampling) ---
     if conf_pre.get('sampling') == "undersampling":
         rus = RandomUnderSampler(random_state=42)
-        X_train_scaled, y_train_scaled = rus.fit_resample(X_train_scaled, y_train)
+        # Resampleamos los datos preparados (para KNN/Trees)
+        X_train_model, y_train_model = rus.fit_resample(X_train_prep, y_train)
+        # Resampleamos los datos NO escalados (para Naive Bayes)
         X_train_ns, y_train_ns = rus.fit_resample(X_train, y_train)
     else:
-        y_train_scaled, X_train_ns, y_train_ns = y_train, X_train, y_train
+        X_train_model, y_train_model = X_train_prep, y_train
+        X_train_ns, y_train_ns = X_train, y_train
 
     resultados = []
     mejor_f1, mejor_clf, mejor_prep, nombre_mejor = -1, None, None, ""
+    mejor_comb = ""
     avg = 'binary' if len(le.classes_) == 2 else 'macro'
 
     # Matriz de confusión
@@ -68,26 +83,37 @@ def train():
 
     # 1. KNN
     if algoritmo_elegido in ["knn", "todos"]:
+        config_weights = hp["knn"]["weights"]
+        if isinstance(config_weights, str): config_weights = [config_weights]
+
         for k in range(hp["knn"]["k_min"], hp["knn"]["k_max"] + 1, 2):
             for p in range(hp["knn"]["p_min"], hp["knn"]["p_max"] + 1):
-                clf = KNeighborsClassifier(n_neighbors=k, p=p, weights='uniform')
-                clf.fit(X_train_scaled, y_train_scaled)
-                m = registrar_metrica(y_dev, clf.predict(X_dev_scaled), "KNN", f"k={k}, p={p}")
-                resultados.append(m)
-                if m["F_score(Mac/Mic/Avg/None)"] > mejor_f1:
-                    mejor_f1, mejor_clf, mejor_prep, nombre_mejor = m["F_score(Mac/Mic/Avg/None)"], clf, None, "KNN"
+                for w in config_weights:
+                    clf = KNeighborsClassifier(n_neighbors=k, p=p, weights=w)
+                    clf.fit(X_train_model, y_train_model)
+                    y_pred = clf.predict(X_dev_prep)
+
+                    m = registrar_metrica(y_dev, y_pred, "KNN", f"k={k}, p={p}, w={w}")
+                    resultados.append(m)
+                    if m["F_score(Mac/Mic/Avg/None)"] > mejor_f1:
+                        mejor_f1 = m["F_score(Mac/Mic/Avg/None)"]
+                        mejor_clf, mejor_prep, nombre_mejor = clf, None, "KNN"
+                        mejor_comb = m["Combinación"]
 
     # 2. Árboles
     if algoritmo_elegido in ["tree", "todos"]:
         for d in hp["trees"]["max_depth"]:
             for ml in hp["trees"]["min_samples_leaf"]:
                 clf = DecisionTreeClassifier(max_depth=d, min_samples_leaf=ml, random_state=42)
-                clf.fit(X_train_scaled, y_train_scaled)
-                # Obtener matriz de confusión
-                m = registrar_metrica(y_dev, clf.predict(X_dev_scaled), "Tree", f"d={d}, ml={ml}")
+                clf.fit(X_train_model, y_train_model)
+                y_pred = clf.predict(X_dev_prep)
+
+                m = registrar_metrica(y_dev, y_pred, "Tree", f"d={d}, ml={ml}")
                 resultados.append(m)
                 if m["F_score(Mac/Mic/Avg/None)"] > mejor_f1:
-                    mejor_f1, mejor_clf, mejor_prep, nombre_mejor = m["F_score(Mac/Mic/Avg/None)"], clf, None, "Tree"
+                    mejor_f1 = m["F_score(Mac/Mic/Avg/None)"]
+                    mejor_clf, mejor_prep, nombre_mejor = clf, None, "Tree"
+                    mejor_comb = m["Combinación"]
 
     # 3. Naive-Bayes
     if algoritmo_elegido in ["nb", "todos"]:
@@ -105,6 +131,7 @@ def train():
         if m_cat["F_score(Mac/Mic/Avg/None)"] > mejor_f1:
             mejor_f1, mejor_clf, mejor_prep, nombre_mejor = m_cat[
                 "F_score(Mac/Mic/Avg/None)"], clf_cat, discretizer, "CategoricalNB"
+            mejor_comb = m["Combinación"]
 
         # Versión MixedNB
         clf_mixed = MixedNB(categorical_features=[])
@@ -115,6 +142,7 @@ def train():
         if m_mix["F_score(Mac/Mic/Avg/None)"] > mejor_f1:
             mejor_f1, mejor_clf, mejor_prep, nombre_mejor = m_mix[
                 "F_score(Mac/Mic/Avg/None)"], clf_mixed, None, "MixedNB"
+            mejor_comb = m["Combinación"]
 
     # Guardado siguiendo la "Receta"
     pd.DataFrame(resultados).to_csv("resultados_entrenamiento.csv", index=False)
@@ -126,10 +154,11 @@ def train():
         'label_encoder': le,
         'columns': X.columns,
         'discretizer': mejor_prep,
-        'algoritmo': nombre_mejor
+        'algoritmo': nombre_mejor,
+        'combinacion_exacta': mejor_comb
     }
     pickle.dump(obj_guardar, open("preprocessing_objects.sav", 'wb'))
-    print(f"Mejor modelo global: {nombre_mejor} con F1: {mejor_f1}")
+    print(f"Mejor modelo global: {mejor_comb} con F1: {mejor_f1}")
 
 
 if __name__ == "__main__":
