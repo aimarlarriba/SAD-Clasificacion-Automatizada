@@ -95,16 +95,11 @@ Define los rangos para el barrido automático (Grid Search) y la optimización d
 ---
 
 ## Requisitos
-Para garantizar el correcto funcionamiento del pipeline, es necesario contar con el siguiente entorno:
-
-* **Entorno**: Se recomienda el uso de **Anaconda** con Python 3.7 o superior.
-* **Librerías principales**:
-    * `scikit-learn`: Para algoritmos de clasificación y métricas.
-    * `pandas`: Para la manipulación de los juegos de datos.
-    * `imbalanced-learn (imblearn)`: Para técnicas de balanceo.
-    * `mixed-naive-bayes`: Para la implementación de Naive Bayes mixto.
-    * `pickle` / `pickle5`: Para la serialización de modelos en disco.
-
+El proyecto está desarrollado en Python 3.8+. Para replicar el entorno de ejecución de forma sencilla, se recomienda el uso de un entorno virtual:
+```bash
+# Instalación de dependencias
+pip install -r requirements.txt
+```
 ---
 
 ## Modo de Empleo
@@ -122,3 +117,14 @@ Para predecir la clase de nuevas muestras, se utiliza el script de test con el m
 python test.py Test.csv configuration.json
 ```
 **Nota:** El script de test aplica automáticamente el preproceso (escalado, imputación) utilizando los parámetros aprendidos durante el entrenamiento, pero nunca aplica balanceo a los datos de test.
+
+---
+
+## Declaración de Asistencia de IA
+Se ha hecho uso de herramientas de IA Generativa (Gemini) como asistente de copiloto para:
+
+* **Estructuración técnica**: Diseño general de los scripts `train.py` y `test.py` siguiendo la receta de la asignatura.
+* **Depuración de código**: Resolución de errores de tipos en el preprocesado dinámico y manejo de variables.
+* **Documentación**: Redacción y formato Markdown de este archivo README.
+
+**Nota:** Todo el código ha sido validado y testeado manualmente para asegurar su integridad y cumplimiento con los objetivos de la asignatura.
