@@ -1,4 +1,6 @@
 # SAD-Clasificacion-Automatizada
+![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 Este repositorio contiene la implementación de un entorno de experimentación para la asignatura de **Sistemas de Ayuda a la Decisión (SAD)** de la **Universidad del País Vasco (UPV/EHU)**. El objetivo principal es la transición de prototipos básicos de Dataiku a un entorno robusto en Python capaz de realizar barridos de hiperparámetros y evaluaciones automáticas.
 
@@ -52,7 +54,7 @@ El archivo de configuración, el cual se muestra a continuación, actúa como el
   }
 }
 ```
-Este divide en tres bloques principales:
+Este se divide en tres bloques principales:
 
 #### 1. Control de Ejecución
 * **`algorithm`**: Determina el alcance del entrenamiento.
@@ -93,6 +95,7 @@ Define los rangos para el barrido automático (Grid Search) y la optimización d
     * **`min_samples_leaf`**: Lista de enteros (ej. `[1, 2]`). Define el número mínimo de muestras requerido en un nodo terminal.
 * **`naive_bayes`**:
     * **`n_bins`**: Valor entero (ej. 5). Determina el número de intervalos para la discretización de variables continuas necesaria para `CategoricalNB`.
+
 ---
 
 ## Requisitos
@@ -101,6 +104,7 @@ El proyecto está desarrollado en Python 3.8+. Para replicar el entorno de ejecu
 # Instalación de dependencias
 pip install -r requirements.txt
 ```
+
 ---
 
 ## Modo de Empleo
@@ -117,7 +121,12 @@ Para predecir la clase de nuevas muestras, se utiliza el script de test con el m
 ```bash
 python test.py Test.csv configuration.json
 ```
-**Nota:** El script de test aplica automáticamente el preproceso (escalado, imputación) utilizando los parámetros aprendidos durante el entrenamiento, pero nunca aplica balanceo a los datos de test.
+***Nota:** El script de test aplica automáticamente el preproceso (escalado, imputación) utilizando los parámetros aprendidos durante el entrenamiento, pero nunca aplica balanceo a los datos de test.*
+
+---
+
+## Licencia
+Este proyecto está bajo la Licencia MIT. Consulta el archivo [LICENSE](LICENSE) para más detalles.
 
 ---
 
@@ -128,4 +137,4 @@ Se ha hecho uso de herramientas de IA Generativa (Gemini) como asistente para:
 * **Depuración de código**: Resolución de errores de tipos en el preprocesado dinámico y manejo de variables.
 * **Documentación**: Redacción y formato Markdown de este archivo README.
 
-**Nota:** Todo el código ha sido validado y testeado manualmente para asegurar su integridad y cumplimiento con los objetivos de la asignatura.
+***Nota:** Todo el código ha sido validado y testeado manualmente para asegurar su integridad y cumplimiento con los objetivos de la asignatura.*
