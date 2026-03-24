@@ -3,7 +3,7 @@
 Este repositorio contiene la implementación de un entorno de experimentación para la asignatura de **Sistemas de Ayuda a la Decisión (SAD)** de la **Universidad del País Vasco (UPV/EHU)**. El objetivo principal es la transición de prototipos básicos de Dataiku a un entorno robusto en Python capaz de realizar barridos de hiperparámetros y evaluaciones automáticas.
 
 ## Miembros
-* **Lou Gómez Foucher**
+* **Lou Gómez**
 * **Aimar Larriba**
 
 ---
