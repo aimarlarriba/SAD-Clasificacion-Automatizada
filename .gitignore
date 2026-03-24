@@ -18,3 +18,8 @@ __pycache__/
 # --- Sistema ---
 .DS_Store
 Thumbs.db
+
+# --- Específicos de PyCharm / Entorno ---
+.idea/
+.venv/
+venv/
