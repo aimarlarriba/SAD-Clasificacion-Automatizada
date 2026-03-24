@@ -1,0 +1,1 @@
+python scriptKNN.py iris.csv 1 5 2 uniform -c configuration.json
