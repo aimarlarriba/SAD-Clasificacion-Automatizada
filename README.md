@@ -14,9 +14,10 @@ El proyecto se organiza en torno a scripts funcionales y archivos de persistenci
 * **`train.py`**: Script encargado de cargar los datos, realizar el preproceso dinámico, ejecutar el barrido de parámetros y seleccionar el modelo ganador.
 * **`test.py`**: Programa diseñado para cargar el modelo salvado y clasificar nuevas instancias.
 * **`configuration.json`**: Fichero centralizado donde se definen las estrategias de preproceso (nulos, escalado, balanceo) y los rangos de hiperparámetros (Estructura exlicada más abajo).
-* **`bestmodel.sav`**: Archivo binario que contiene el mejor modelo entrenado mediante `pickle`.
-* **`preprocessing_objects.sav`**: Diccionario persistido con los objetos necesarios para que el test sea consistente con el entrenamiento (Scaler, Imputer, etc.).
-* **`resultados_entrenamiento.csv`**: Informe generado automáticamente con las métricas Accuracy, Precision, Recall y F-score de todas las combinaciones probadas.
+* **`Output`**:
+  * **`bestmodel.sav`**: Archivo binario que contiene el mejor modelo entrenado mediante `pickle`.
+  * **`preprocessing_objects.sav`**: Diccionario persistido con los objetos necesarios para que el test sea consistente con el entrenamiento (Scaler, Imputer, etc.).
+  * **`resultados_entrenamiento.csv`**: Informe generado automáticamente con las métricas Accuracy, Precision, Recall y F-score de todas las combinaciones probadas.
 
 ---
 
@@ -121,9 +122,9 @@ python test.py Test.csv configuration.json
 ---
 
 ## Declaración de Asistencia de IA
-Se ha hecho uso de herramientas de IA Generativa (Gemini) como asistente de copiloto para:
+Se ha hecho uso de herramientas de IA Generativa (Gemini) como asistente para:
 
-* **Estructuración técnica**: Diseño general de los scripts `train.py` y `test.py` siguiendo la receta de la asignatura.
+* **Estructuración técnica**: Diseño general de los scripts `train.py` y `test.py` siguiendo el guión de la asignatura.
 * **Depuración de código**: Resolución de errores de tipos en el preprocesado dinámico y manejo de variables.
 * **Documentación**: Redacción y formato Markdown de este archivo README.
 
