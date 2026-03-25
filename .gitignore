@@ -1,7 +1,5 @@
 # --- Datasets ---
 # Prohibido subir los datos de la práctica según el guion
-iris.csv
-Santander*.csv
 *.csv
 # Pero queremos permitir el CSV de resultados
 !resultados_entrenamiento.csv
