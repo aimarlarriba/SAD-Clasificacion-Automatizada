@@ -1,9 +1,9 @@
 {
-  "project_name": "Iris",
-  "algorithm": "todos",
+  "project_name": "Proyecto",
+  "algorithm": "knn",
   "preprocessing": {
     "test_split": 0,
-    "target_variable": "Especie",
+    "target_variable": "Target",
     "drop_features": [],
     "missing_values": "impute",
     "impute_strategy": "median",
@@ -13,7 +13,7 @@
   "hyperparameters": {
     "knn": {
       "k_min": 1,
-      "k_max": 9,
+      "k_max": 5,
       "p_min": 1,
       "p_max": 2,
       "weights": ["uniform", "distance"]
@@ -27,7 +27,7 @@
         "max_depth": [5, 10, null]
     },
     "naive_bayes": {
-      "n_bins": 10
+      "n_bins": 5
     }
   }
 }
