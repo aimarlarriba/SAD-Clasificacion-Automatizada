@@ -159,6 +159,7 @@ Para predecir la clase de nuevas muestras, se utiliza el mejor modelo guardado e
 python test.py Test.csv NombreDelProyecto
 ```
 ***Nota:** El script de test aplica automáticamente el preproceso (escalado, imputación) utilizando los parámetros aprendidos durante el entrenamiento, pero nunca aplica balanceo a los datos de test.*
+
 ***Nota:** El archivo `.csv` se puede indicar mediante su ruta directa o, si este se encuentra en `datos/` del proyecto correspondiente, únicamente mediante su nombre*
 
 ---
