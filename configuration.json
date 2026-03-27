@@ -8,12 +8,12 @@
     "missing_values": "impute",
     "impute_strategy": "median",
     "scaling": "standard",
-    "sampling": "oversampling"
+    "sampling": "underrsampling"
   },
   "hyperparameters": {
     "knn": {
       "k_min": 1,
-      "k_max": 5,
+      "k_max": 9,
       "p_min": 1,
       "p_max": 2,
       "weights": ["uniform", "distance"]
@@ -27,7 +27,7 @@
         "max_depth": [5, 10, null]
     },
     "naive_bayes": {
-      "n_bins": 5
+      "n_bins": 10
     }
   }
 }
