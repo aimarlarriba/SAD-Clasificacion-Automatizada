@@ -1,3 +1,4 @@
+
 # SAD-Clasificacion-Automatizada
 ![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -59,7 +60,7 @@ El archivo de configuración, el cual se muestra a continuación, actúa como el
     "missing_values": "impute",
     "impute_strategy": "median",
     "scaling": "standard",
-    "sampling": "oversampling"
+    "sampling": "undersampling"
   },
   "hyperparameters": {
     "knn": {
@@ -86,9 +87,9 @@ El archivo de configuración, el cual se muestra a continuación, actúa como el
 Este se divide en tres bloques principales:
 
 #### 1. Control de Ejecución
-* **`project_name`**: Determina el normbre del proyecto.
+* **`project_name`**: Determina el nombre del proyecto.
 * **`algorithm`**: Permite aislar un experimento o ejecutar la comparativa completa entre algoritmos para seleccionar el mejor modelo global.
-    * **Valores**: `"knn"`, `"tree"`, `"nb"` o `"todos"`.
+    * **Valores**: `"knn"`, `"tree"`, `"rf"`, `"nb"` o `"todos"`.
 
 #### 2. Preprocesado (`preprocessing`)
 Configura las transformaciones que aseguran la calidad de los datos antes del entrenamiento:
