@@ -74,12 +74,14 @@ El archivo de configuración, el cual se muestra a continuación, actúa como el
       "max_depth": [5, 10, 15],
       "min_samples_leaf": [2, 5]
     },
-    "rf": {
+    "random_forest": {
         "n_estimators": [50, 100, 200],
         "max_depth": [5, 10, null]
     },
     "naive_bayes": {
-      "n_bins": 5
+      "n_bins": [5, 10],
+      "alphas": [0.5, 1.0],
+      "min_categories": null
     }
   }
 }
@@ -107,7 +109,7 @@ Configura las transformaciones que aseguran la calidad de los datos antes del en
 * **`scaling`**: Activa o desactiva el escalado $Z$-score, fundamental para algoritmos basados en distancia como KNN.
     * **Valores**: `"standard"` o `"none"`.
 * **`sampling`**: Define el método de balanceo de clases en el conjunto de entrenamiento para evitar sesgos hacia la clase mayoritaria.
-    * **Valores**: `"undersampling"`, `"smote"` o `"none"`.
+    * **Valores**: `"undersampling"`, `"oversampling"` o `"none"`.
 
 #### 3. Hiperparámetros (`hyperparameters`)
 Define los rangos para el barrido automático (Grid Search) y la optimización de los modelos:
@@ -130,8 +132,12 @@ Define los rangos para el barrido automático (Grid Search) y la optimización d
     * **`max_depth`**: Controla la profundidad máxima del árbol para evitar el *overfitting*. Se deben indicar los valores a probar, no el rango.
         * **Valores**: Lista de Integer `[]`. 
 * **`naive_bayes`**:
-    * **`n_bins`**: Determina el número de intervalos para la discretización de variables continuas.
-        * **Valores**: Integer.
+    * **`n_bins`**: Determina el número de intervalos para la discretización de variables continuas al usar la versión CategoricalNB. Se deben indicar los valores a probar.
+        * **Valores**: Lista de Integer `[]`.
+    * **`alphas`**: Define los valores del parámetro de suavizado de Laplace (Laplace smoothing) a probar en el barrido para evitar probabilidades nulas.
+        * **Valores**: Lista de Float `[]`.
+    * **`min_categories`**: Número mínimo de categorías esperadas por atributo. Si se desconoce, se deja vacío para que el algoritmo lo calcule automáticamente.
+        * **Valores**: Integer o `null`.
 
 ---
 

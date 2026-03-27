@@ -148,40 +148,49 @@ def entrenar_rf(hp, X_train, y_train, X_dev, y_dev, avg):
     return resultados, mejor_f1_local, mejor_clf_local, None, mejor_comb_local
 
 
-def entrenar_nb(hp, X_train_ns, y_train_ns, X_dev_imp, y_dev, avg):
+def entrenar_nb(hp, X_train_ns, y_train_ns, X_dev_imp, y_dev, avg, cat_indices):
     resultados = []
-    mejor_f1_local = -1;
-    mejor_clf_local = None;
-    mejor_prep_local = None;
+    mejor_f1_local = -1
+    mejor_clf_local = None
+    mejor_prep_local = None
     mejor_comb_local = ""
 
-    # --- VERSIÓN 1: Categorical Naive Bayes ---
-    # Necesita que los números continuos (ej. salario 1500.5) se conviertan en "cajas" o categorías discretas (ej. caja 2).
-    bins = hp["naive_bayes"]["n_bins"]  # Saca el número de cajas del JSON
-    disc = KBinsDiscretizer(n_bins=bins, encode='ordinal', strategy='uniform')  # Crea el "empaquetador"
-    X_train_nb = disc.fit_transform(X_train_ns)  # Empaqueta los datos de entrenamiento
+    # Extraemos min_categories (por defecto None si no está en el JSON)
+    min_cat = hp["naive_bayes"].get("min_categories", None)
 
-    clf_cat = CategoricalNB().fit(X_train_nb, y_train_ns)  # Entrena con los datos empaquetados
-    # Al predecir, hay que empaquetar también los datos de examen (X_dev_imp) con disc.transform
-    res, val = registrar_metrica(y_dev, clf_cat.predict(disc.transform(X_dev_imp)), "CategoricalNB", f"bins={bins}",
-                                 avg)
-    resultados.append(res)
-    if val > mejor_f1_local:
-        mejor_f1_local = val;
-        mejor_clf_local = clf_cat;
-        mejor_prep_local = disc;
-        mejor_comb_local = res["Combinación"]
+    # Bucle 1: Barrido del parámetro alpha (Laplace smoothing)
+    for a in hp["naive_bayes"].get("alphas", [1.0]):
 
-    # --- VERSIÓN 2: Mixed Naive Bayes ---
-    # Este traga con todo a la vez numeros normales y categorias, sin empaquetar
-    clf_mix = MixedNB(categorical_features=[]).fit(X_train_ns, y_train_ns)
-    res, val = registrar_metrica(y_dev, clf_mix.predict(X_dev_imp), "MixedNB", "default", avg)
-    resultados.append(res)
-    if val > mejor_f1_local:
-        mejor_f1_local = val;
-        mejor_clf_local = clf_mix;
-        mejor_prep_local = None;
-        mejor_comb_local = res["Combinación"]
+        # --- VERSIÓN 1: Categorical Naive Bayes ---
+        for bins in hp["naive_bayes"].get("n_bins", [5]):
+            disc = KBinsDiscretizer(n_bins=bins, encode='ordinal', strategy='uniform')
+            X_train_nb = disc.fit_transform(X_train_ns)
+
+            # Instanciamos aplicando alpha y min_categories
+            clf_cat = CategoricalNB(alpha=a, min_categories=min_cat).fit(X_train_nb, y_train_ns)
+
+            res, val = registrar_metrica(y_dev, clf_cat.predict(disc.transform(X_dev_imp)), "CategoricalNB",
+                                         f"bins={bins},alpha={a}", avg)
+            resultados.append(res)
+
+            if val > mejor_f1_local:
+                mejor_f1_local = val
+                mejor_clf_local = clf_cat
+                mejor_prep_local = disc
+                mejor_comb_local = res["Combinación"]
+
+        # --- VERSIÓN 2: Mixed Naive Bayes ---
+        # Le pasamos los índices detectados automáticamente y el alpha actual
+        clf_mix = MixedNB(categorical_features=cat_indices, alpha=a).fit(X_train_ns, y_train_ns)
+
+        res, val = registrar_metrica(y_dev, clf_mix.predict(X_dev_imp), "MixedNB", f"alpha={a}", avg)
+        resultados.append(res)
+
+        if val > mejor_f1_local:
+            mejor_f1_local = val
+            mejor_clf_local = clf_mix
+            mejor_prep_local = None
+            mejor_comb_local = res["Combinación"]
 
     return resultados, mejor_f1_local, mejor_clf_local, mejor_prep_local, mejor_comb_local
 
@@ -309,8 +318,8 @@ def train():
         X_train_model, y_train_model = rus.fit_resample(X_train_prep, y_train)
         X_train_ns, y_train_ns = rus.fit_resample(X_train_imp, y_train)
 
-    # Opción 2: SMOTE (crea datos sintéticos para la clase minoritaria)
-    elif estrategia_balanceo == "smote":
+    # Opción 2: Oversampling/SMOTE (crea datos sintéticos para la clase minoritaria)
+    elif estrategia_balanceo == "oversampling":
         smote = SMOTE(random_state=42)
         X_train_model, y_train_model = smote.fit_resample(X_train_prep, y_train)
         X_train_ns, y_train_ns = smote.fit_resample(X_train_imp, y_train)
@@ -349,8 +358,11 @@ def train():
             mejor_f1_global, mejor_clf_global, mejor_prep_global, nombre_mejor_global, mejor_comb_global = f1, clf, prep, "Random Forest", comb
 
     if algoritmo_elegido in ["nb", "todos"]:
-        # a NB le pasamos X_train_ns (No Scaled), porque escalar da problemas en sus logaritmos internos.
-        res, f1, clf, prep, comb = entrenar_nb(hp, X_train_ns, y_train_ns, X_dev_imp, y_dev, avg)
+        # Detectamos automáticamente qué columnas son categóricas (las que tienen 2 o menos valores únicos, ej. 0 y 1)
+        indices_categoricos = [i for i, col in enumerate(X_cols.columns) if X_cols[col].nunique() <= 2]
+
+        # Le pasamos los índices a la función
+        res, f1, clf, prep, comb = entrenar_nb(hp, X_train_ns, y_train_ns, X_dev_imp, y_dev, avg, indices_categoricos)
         resultados_globales.extend(res)
         if f1 > mejor_f1_global:
             mejor_f1_global, mejor_clf_global, mejor_prep_global, nombre_mejor_global, mejor_comb_global = f1, clf, prep, "Naive Bayes", comb
