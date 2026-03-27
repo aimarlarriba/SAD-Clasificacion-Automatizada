@@ -3,17 +3,17 @@
   "algorithm": "knn",
   "preprocessing": {
     "test_split": 0,
-    "target_variable": "target",
+    "target_variable": "Target",
     "drop_features": [],
     "missing_values": "impute",
     "impute_strategy": "median",
     "scaling": "standard",
-    "sampling": "undersampling"
+    "sampling": "underrsampling"
   },
   "hyperparameters": {
     "knn": {
       "k_min": 1,
-      "k_max": 5,
+      "k_max": 9,
       "p_min": 1,
       "p_max": 2,
       "weights": ["uniform", "distance"]
@@ -22,12 +22,12 @@
       "max_depth": [5, 10, 15],
       "min_samples_leaf": [2, 5]
     },
-    "random_forest": {
+    "rf": {
         "n_estimators": [50, 100, 200],
         "max_depth": [5, 10, null]
     },
     "naive_bayes": {
-      "n_bins": 5
+      "n_bins": 10
     }
   }
 }
