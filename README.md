@@ -152,6 +152,7 @@ El script de entrenamiento requiere dos argumentos por línea de comandos: el ar
 python train.py TrainDev.csv configuration.json
 ```
 El script comparará el F-score del mejor modelo actual en `best_model/`. Si el nuevo entrenamiento lo supera, el anterior se mueve a `archivo_versiones/` y se guarda el nuevo modelo.
+
 ***Nota:** El archivo `.csv` se puede indicar mediante su ruta directa o, si este se encuentra en `datos/` del proyecto correspondiente, únicamente mediante su nombre*
 
 ### 2. Clasificación de Instancias
