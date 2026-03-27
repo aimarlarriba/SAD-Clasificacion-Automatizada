@@ -1,102 +1,138 @@
-import shutil
-import pandas as pd
-import sys
-import pickle
-import os
-from sklearn.metrics import confusion_matrix, f1_score
+# ==========================================
+# SCRIPT DE EVALUACIÓN / PREDICCIÓN
+# ==========================================
+
+import shutil  # Para copiar el CSV de test dentro de nuestra estructura de carpetas si está fuera
+import pandas as pd  # Para manejar las tablas
+import sys  # Para leer qué CSV desde la terminal
+import pickle  # Para cargar el modelo ganador guardado en train.py
+import os  # Para las rutas de carpetas
+from sklearn.metrics import confusion_matrix, f1_score  # Fórmulas para comprobar qué tal lo ha hecho adivinando
+from mixed_naive_bayes import MixedNB
 
 
 def test():
+    # 1. COMPROBAR TERMINAL
+    # Necesitamos el comando de python, el nombre del csv y el nombre del proyecto.
     if len(sys.argv) < 3:
         print("\n[!] Uso: python test.py <ruta_o_nombre_csv> <nombre_proyecto>")
         sys.exit(1)
 
     input_csv, proyecto = sys.argv[1], sys.argv[2]
 
+    # 2. LOCALIZAR CARPETAS
+    # Entra en la carpeta /proyectos/ y luego en la carpeta de nuestro proyecto en concreto.
     base_path = os.path.join("proyectos", proyecto)
     data_path = os.path.join(base_path, "datos")
     best_model_path = os.path.join(base_path, "best_model")
 
-    # SE VERIFICA QUE EXISTE EL MODELO
+    # Si el archivo no existe en la ruta actual, lo busca en la carpeta 'datos' del proyecto
+    if not os.path.exists(input_csv):
+        posible_ruta = os.path.join(data_path, input_csv)
+        if os.path.exists(posible_ruta):
+            input_csv = posible_ruta
+        else:
+            print(f"[ERROR] No se encuentra el archivo de entrada: {input_csv}")
+            sys.exit(1)
+
+    # Chequea que el proyecto existió y se entrenó (debe haber una carpeta 'best_model').
     if not os.path.exists(best_model_path):
         print(f"[ERROR] No existe el proyecto '{proyecto}' o no tiene modelos en 'best_model'.")
         sys.exit(1)
 
-    # --- LOCALIZACIÓN Y COPIA DE DATOS ---
-    if not os.path.exists(input_csv):
-        print(f"[ERROR] El archivo de entrada no existe: {input_csv}")
-        sys.exit(1)
+    # 3. ORGANIZAR DATOS
+    nombre_csv = os.path.basename(
+        input_csv)  # Coge solo el nombre, ignorando la ruta entera (ej. C:/descargas/test.csv -> test.csv)
+    ruta_final_datos = os.path.join(data_path,
+                                    f"evaluacion_{nombre_csv}")  # Crea la ruta donde se va a guardar una copia.
 
-    nombre_csv = os.path.basename(input_csv)
-    # Definimos la ruta destino dentro de la carpeta del proyecto
-    ruta_final_datos = os.path.join(data_path, f"evaluacion_{nombre_csv}")
-
-    # Si el archivo no está en la carpeta de datos, lo copiamos
+    # Si el archivo CSV lo tenemos en el escritorio, lo copia automáticamente a la carpeta /datos/ del proyecto.
     if os.path.abspath(input_csv) != os.path.abspath(ruta_final_datos):
         os.makedirs(data_path, exist_ok=True)
         shutil.copy2(input_csv, ruta_final_datos)
-        print(f"[*] Archivo copiado a la estructura del proyecto: {ruta_final_datos}")
 
-    # --- CARGA DE OBJETOS ---
+    # 4. CARGAR HERRAMIENTAS Y MODELO (Deserializar)
     try:
+        # Abrimos (en modo 'rb' -> read binary) los archivos .sav y recuperamos los objetos.
         pre_obj = pickle.load(open(os.path.join(best_model_path, "preprocessing_objects.sav"), 'rb'))
         clf = pickle.load(open(os.path.join(best_model_path, "bestmodel.sav"), 'rb'))
     except FileNotFoundError:
         print("[ERROR] Faltan archivos .sav en la carpeta del modelo.")
         sys.exit(1)
 
-    # --- PROCESAMIENTO ---
-    df = pd.read_csv(ruta_final_datos)
-    le = pre_obj['label_encoder']
-    target_col = pre_obj['target_variable']
+    # 5. PREPROCESADO IGUAL QUE EN EL TRAIN
+    df = pd.read_csv(ruta_final_datos)  # Leemos los datos nuevos
 
-    # Separar Target y Features
+    # Recuperamos de pre_obj las variables que el train consideró importantes
+    le = pre_obj['label_encoder']  # Letras -> Números de la clase
+    target_col = pre_obj['target_variable']  # El nombre de la columna que queremos predecir
+
+    # ¿Viene la solución en este CSV?
+    # Si existe la columna objetivo, guardamos las respuestas correctas en y_true transformándolas a números. Si no, le damos valor None.
     y_true = le.transform(df[target_col].astype(str)) if target_col in df.columns else None
+
+    # X son los datos que le enseñamos al modelo. Borramos la columna objetivo
     X = df.drop(columns=[target_col]) if target_col in df.columns else df
 
-    # Reconstrucción de columnas (One-Hot Encoding)
+    # get_dummies transforma categorías a binario.
+    # .reindex(columns=pre_obj['columns']) Si el train vio "Color_Rojo" y "Color_Verde", pero en el CSV de test
+    # no hay ningún rojo, get_dummies no crearía esa columna y el modelo reventaría porque le faltan datos
+    # reindex fuerza a que las columnas sean idénticas al train, rellenando con ceros si falta algo.
     X_p = pd.get_dummies(X, drop_first=True).reindex(columns=pre_obj['columns'], fill_value=0)
 
-    # Imputación
-    X_p = pre_obj['imputer'].transform(X_p)
+    # Aplicamos el imputador solo si el train nos guardó uno
+    if pre_obj['imputer'] is not None:
+        X_p = pre_obj['imputer'].transform(X_p)
 
-    # APLICACIÓN DE TRANSFORMACIONES SEGÚN EL MODELO
+    # Vemos qué algoritmo ganó en train para saber qué último preprocesado aplicar.
     alg = pre_obj['algoritmo']
 
+    # Si ganó uno de estos y encima había escalador guardado...
     if alg in ["KNN", "Tree", "Random Forest"] and pre_obj['scaler'] is not None:
-        X_p = pre_obj['scaler'].transform(X_p)
-    elif "CategoricalNB" in alg and pre_obj['discretizer'] is not None:
-        X_p = pre_obj['discretizer'].transform(X_p)
+        X_p = pre_obj['scaler'].transform(X_p)  # ... los escala con el Z-score del train.
 
-    # Realizar predicción
+    # Si ganó Naive Bayes y guardó un discretizador (cajas)...
+    elif alg == "Naive Bayes" and pre_obj['discretizer'] is not None:
+        X_p = pre_obj['discretizer'].transform(X_p)  # ... empaqueta los datos de test en esas mismas cajas.
+
+    # 6. EL MOMENTO DE LA VERDAD: PREDICCIÓN
+    # clf (clasificador) suelta sus predicciones basándose en los datos nuevos ya preprocesados.
     preds = clf.predict(X_p)
 
-    # --- SALIDA ---
+
     print("\n" + "=" * 50)
     print(f"PROYECTO: {proyecto} | Algoritmo: {alg}")
     print(f"Combinación: {pre_obj.get('combinacion_exacta', 'N/A')}")
     print("=" * 50)
 
+    # 7. EXAMINAR RESULTADOS (Si tenemos las respuestas reales)
     if y_true is not None:
+        # Vuelve a verificar cómo calcular la nota media (binary o macro)
         avg = 'binary' if len(le.classes_) == 2 else 'macro'
         print(f"F-Score (Val): {f1_score(y_true, preds, average=avg):.4f}")
+
+        # Matriz de confusión: Muestra visualmente dónde ha acertado y dónde se ha liado.
+        # Filas: Lo que era en realidad. Columnas: Lo que predijo el modelo.
         print("\nMatriz de Confusión:")
         conf_df = pd.DataFrame(confusion_matrix(y_true, preds), index=le.classes_, columns=le.classes_)
         print(conf_df)
 
-    # Guardar predicciones
+    # 8. GUARDAR LAS PREDICCIONES
+    # Creamos carpeta si no existe
     preds_dir = os.path.join(best_model_path, "predicciones_generadas")
     os.makedirs(preds_dir, exist_ok=True)
 
+    # Formateamos el nombre del archivo para que incluya qué modelo es y qué nota sacó en train.
     nombre_alg = pre_obj['algoritmo'].replace(" ", "_")
     f1_val = f"{pre_obj.get('f1_score', 0):.4f}"
-
-    # Usamos nombre_csv (el original) para el nombre del archivo de salida
     nombre_archivo_final = f"pred_{nombre_alg}_F1_{f1_val}_{nombre_csv}"
     output_path = os.path.join(preds_dir, nombre_archivo_final)
 
-    # Guardar
+    # Añadimos las predicciones al excel original.
+    # le.inverse_transform(preds) coge los [0, 1] y los vuelve a transformar en ["Gato", "Perro"] para que lo leamos los humanos.
     df['Prediccion_Label'] = le.inverse_transform(preds)
+
+    # Guardamos el CSV definitivo
     df.to_csv(output_path, index=False)
 
     print(f"\n[*] Predicciones guardadas exitosamente en:\n    {output_path}\n")

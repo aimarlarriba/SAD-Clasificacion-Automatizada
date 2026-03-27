@@ -1,10 +1,11 @@
+
 # SAD-Clasificacion-Automatizada
 ![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 Este repositorio contiene la implementación de un entorno de experimentación para la asignatura de **Sistemas de Ayuda a la Decisión (SAD)** de la **Universidad del País Vasco (UPV/EHU)**. El objetivo principal es la transición de prototipos básicos de Dataiku a un entorno robusto en Python capaz de realizar barridos de hiperparámetros y evaluaciones automáticas.
 
-## Miembros
+## Desarrollado por:
 * **Lou Gómez**
 * **Aimar Larriba**
 
@@ -13,13 +14,36 @@ Este repositorio contiene la implementación de un entorno de experimentación p
 ## Estructura del Proyecto
 El proyecto se organiza en torno a scripts funcionales y archivos de persistencia siguiendo la "receta" oficial:
 
-* **`train.py`**: Script encargado de cargar los datos, realizar el preproceso dinámico, ejecutar el barrido de parámetros y seleccionar el modelo ganador.
-* **`test.py`**: Programa diseñado para cargar el modelo salvado y clasificar nuevas instancias.
-* **`configuration.json`**: Fichero centralizado donde se definen las estrategias de preproceso (nulos, escalado, balanceo) y los rangos de hiperparámetros (Estructura exlicada más abajo).
-* **`Output`**:
-  * **`bestmodel.sav`**: Archivo binario que contiene el mejor modelo entrenado mediante `pickle`.
-  * **`preprocessing_objects.sav`**: Diccionario persistido con los objetos necesarios para que el test sea consistente con el entrenamiento (Scaler, Imputer, etc.).
-  * **`resultados_entrenamiento.csv`**: Informe generado automáticamente con las métricas Accuracy, Precision, Recall y F-score de todas las combinaciones probadas.
+* **`train.py`**: Script que realiza la carga de datos, preproceso dinámico, partición estratificada, barrido de parámetros (Grid Search) y selección del mejor modelo.
+* **`test.py`**: Programa para cargar el modelo ganador y clasificar nuevas instancias, manteniendo la consistencia del preproceso.
+* **`configuration.json`**: Fichero centralizado de configuración (estrategias de preproceso y rangos de hiperparámetros).
+* **`proyectos/{project_name}/`**: 
+  * **`datos/`**: Copias de seguridad de los datasets utilizados y tests automáticos.
+  * **`best_model/`**: Contiene `bestmodel.sav`, `preprocessing_objects.sav` y el informe de `ultimos_resultados.csv`.
+  * **`archivo_versiones/`**: Histórico de modelos previos archivados al encontrar una mejora en el F-score.
+  * **`predicciones_generadas/`**: CSVs resultantes de las ejecuciones de `test.py`.
+  
+```
+      .
+      ├── train.py                # Script de entrenamiento y optimización
+      ├── test.py                 # Script de inferencia y evaluación
+      ├── configuration.json      # Configuración de experimentos
+      └── proyectos/
+          └── {project_name}/     # Carpeta creada automáticamente
+              ├── datos/          # Copias de seguridad y tests estratificados
+              │   ├── entrenamiento_dataset.csv
+              │   └── test_automatico_Iris.csv
+              ├── best_model/     # El modelo con mejor F1-score hasta la fecha
+              │   ├── bestmodel.sav
+              │   ├── preprocessing_objects.sav
+              │   ├── ultimos_resultados.csv
+              │   └── predicciones_generadas/
+              │       └── pred_KNN_F1_0.98_dataset.csv
+              └── archivo_versiones/ # Historial de modelos superados
+                  └── v_F1_0.9200_2026-03-20_10-30/
+                      ├── bestmodel.sav
+                      └── preprocessing_objects.sav
+```
 
 ---
 
@@ -27,14 +51,16 @@ El proyecto se organiza en torno a scripts funcionales y archivos de persistenci
 El archivo de configuración, el cual se muestra a continuación, actúa como el motor del experimento, permitiendo modificar el comportamiento de los scripts sin necesidad de editar el código fuente. 
 ```json
 {
-  "algorithm": "todos",
+  "project_name": "Proyecto",
+  "algorithm": "knn",
   "preprocessing": {
+    "test_split": 0,
     "target_variable": "Target",
     "drop_features": [],
     "missing_values": "impute",
-    "impute_strategy": "mean",
+    "impute_strategy": "median",
     "scaling": "standard",
-    "sampling": "none"
+    "sampling": "undersampling"
   },
   "hyperparameters": {
     "knn": {
@@ -45,8 +71,12 @@ El archivo de configuración, el cual se muestra a continuación, actúa como el
       "weights": ["uniform", "distance"]
     },
     "trees": {
-      "max_depth": [3, 6, 9],
-      "min_samples_leaf": [1, 2]
+      "max_depth": [5, 10, 15],
+      "min_samples_leaf": [2, 5]
+    },
+    "rf": {
+        "n_estimators": [50, 100, 200],
+        "max_depth": [5, 10, null]
     },
     "naive_bayes": {
       "n_bins": 5
@@ -57,44 +87,51 @@ El archivo de configuración, el cual se muestra a continuación, actúa como el
 Este se divide en tres bloques principales:
 
 #### 1. Control de Ejecución
-* **`algorithm`**: Determina el alcance del entrenamiento.
-    * **Valores**: `"knn"`, `"tree"`, `"nb"` o `"todos"`.
-    * **Función**: Permite aislar un experimento o ejecutar la comparativa completa entre algoritmos para seleccionar el mejor modelo global.
+* **`project_name`**: Determina el nombre del proyecto.
+* **`algorithm`**: Permite aislar un experimento o ejecutar la comparativa completa entre algoritmos para seleccionar el mejor modelo global.
+    * **Valores**: `"knn"`, `"tree"`, `"rf"`, `"nb"` o `"todos"`.
 
 #### 2. Preprocesado (`preprocessing`)
 Configura las transformaciones que aseguran la calidad de los datos antes del entrenamiento:
 
-* **`target_variable`**: 
-    * **Valores**: String (ej. `"Especie"` o `"Target"`).
-    * **Función**: Debe coincidir exactamente con el nombre de la columna objetivo en el archivo `.csv`.
-* **`drop_features`**: 
-    * **Valores**: Lista de String `[]`. 
-    * **Función**: Permite eliminar columnas irrelevantes o identificadores únicos para evitar el sobreajuste.
-* **`missing_values`**: 
-    * **Valores**: `"impute"` o `"none"`. 
-    * **Función**: Activa o desactiva la gestión de datos faltantes en el dataset.
-* **`impute_strategy`**: 
-    * **Valores**: `"mean"`, `"median"` o `"most_frequent"`. 
-    * **Función**: Define el criterio estadístico para rellenar los valores nulos.
-* **`scaling`**: 
-    * **Valores**: `"standard"` o `"none"`. 
-    * **Función**: Activa o desactiva el escalado $Z$-score, fundamental para algoritmos basados en distancia como KNN.
-* **`sampling`**: 
-    * **Valores**: `"undersampling"`, `"smote"` o `"none"`. 
-    * **Función**: Balancea las clases en el conjunto de entrenamiento para evitar sesgos hacia la clase mayoritaria.
+* **`test_split`**: Extrae un porcentaje de la muestra inicial para generar un set de evaluación.
+    * **Valores**: Float entre 0 y 1.
+* **`target_variable`**: Nombre del atributo a predecir. Debe coincidir exactamente con el nombre de la columna objetivo en el archivo `.csv`.
+    * **Valores**: String.
+* **`drop_features`**: Nombres de las columnas irrelevantes o identificadores únicos a eliminar para evitar el sobreajuste. Deben coincidir exactamente con el nombre de la columna en el archivo `.csv`.
+    * **Valores**: Lista de String `[]`.
+* **`missing_values`**: Activa o desactiva la gestión de datos faltantes en el dataset
+    * **Valores**: `"impute"` o `"none"`.
+* **`impute_strategy`**: Define el criterio estadístico para rellenar los valores nulos.
+    * **Valores**: `"mean"`, `"median"` o `"most_frequent"`.
+* **`scaling`**: Activa o desactiva el escalado $Z$-score, fundamental para algoritmos basados en distancia como KNN.
+    * **Valores**: `"standard"` o `"none"`.
+* **`sampling`**: Define el método de balanceo de clases en el conjunto de entrenamiento para evitar sesgos hacia la clase mayoritaria.
+    * **Valores**: `"undersampling"`, `"smote"` o `"none"`.
 
 #### 3. Hiperparámetros (`hyperparameters`)
 Define los rangos para el barrido automático (Grid Search) y la optimización de los modelos:
 
 * **`knn`**:
-    * **`k_min` / `k_max`**: Valores enteros (ej. 1 y 5). Define el rango de vecinos $k$ para el barrido.
-    * **`p_min` / `p_max`**: Valores enteros (1 o 2). Define la métrica de distancia de Minkowski ($p=1$: Manhattan, $p=2$: Euclídea).
-    * **`weights`**: Lista `["uniform", "distance"]`. Determina la influencia de los vecinos según su cercanía.
-* **`trees`**:
-    * **`max_depth`**: Lista de enteros (ej. `[3, 6, 9]`). Controla la profundidad máxima del árbol para evitar el *overfitting*.
-    * **`min_samples_leaf`**: Lista de enteros (ej. `[1, 2]`). Define el número mínimo de muestras requerido en un nodo terminal.
+    * **`k_min` / `k_max`**: Define el rango de vecinos $k$ para el barrido.
+        * **Valores**: Integer.
+    * **`p_min` / `p_max`**: Define la métrica de distancia de Minkowski ($p=1$: Manhattan, $p=2$: Euclídea).
+        * **Valores**: Integer.
+    * **`weights`**: Determina la influencia de los vecinos según su cercanía. Se puede indicar sólo un método o ambos.
+        * **Valores**: Lista de String `["uniform", "distance"]`. 
+* **`trees`**: 
+    * **`max_depth`**: Controla la profundidad máxima del árbol para evitar el *overfitting*. Se deben indicar los valores a probar, no el rango.
+        * **Valores**: Lista de Integer `[]`. 
+    * **`min_samples_leaf`**: Define el número mínimo de muestras requerido en un nodo terminal. Se deben indicar los valores a probar, no el rango.
+        * **Valores**: Lista de Integer `[]`.
+* **`random_forest`**:
+    * **`n_estimators`**: Define el número de estimadores (árboles) que componen el Random Forest. Se deben indicar los valores a probar, no el rango.
+        * **Valores**: Lista de Integer `[]`. 
+    * **`max_depth`**: Controla la profundidad máxima del árbol para evitar el *overfitting*. Se deben indicar los valores a probar, no el rango.
+        * **Valores**: Lista de Integer `[]`. 
 * **`naive_bayes`**:
-    * **`n_bins`**: Valor entero (ej. 5). Determina el número de intervalos para la discretización de variables continuas necesaria para `CategoricalNB`.
+    * **`n_bins`**: Determina el número de intervalos para la discretización de variables continuas.
+        * **Valores**: Integer.
 
 ---
 
@@ -114,14 +151,17 @@ El script de entrenamiento requiere dos argumentos por línea de comandos: el ar
 ```bash
 python train.py TrainDev.csv configuration.json
 ```
-Este proceso evalúa todas las combinaciones de KNN, Árboles de Decisión y Naive Bayes definidas, guardando el mejor resultado basado en la figura de mérito F-score.
+El script comparará el F-score del mejor modelo actual en `best_model/`. Si el nuevo entrenamiento lo supera, el anterior se mueve a `archivo_versiones/` y se guarda el nuevo modelo.
+***Nota:** El archivo `.csv` se puede indicar mediante su ruta directa o, si este se encuentra en `datos/` del proyecto correspondiente, únicamente mediante su nombre*
 
 ### 2. Clasificación de Instancias
-Para predecir la clase de nuevas muestras, se utiliza el script de test con el modelo previamente guardado:
+Para predecir la clase de nuevas muestras, se utiliza el mejor modelo guardado en el proyecto correspondiente. Se debe indicar el archivo de datos (cargado con datos nuevos) y el nombre del proyecto. 
 ```bash
-python test.py Test.csv configuration.json
+python test.py Test.csv NombreDelProyecto
 ```
 ***Nota:** El script de test aplica automáticamente el preproceso (escalado, imputación) utilizando los parámetros aprendidos durante el entrenamiento, pero nunca aplica balanceo a los datos de test.*
+
+***Nota:** El archivo `.csv` se puede indicar mediante su ruta directa o, si este se encuentra en `datos/` del proyecto correspondiente, únicamente mediante su nombre*
 
 ---
 
@@ -133,8 +173,8 @@ Este proyecto está bajo la Licencia MIT. Consulta el archivo [LICENSE](LICENSE)
 ## Declaración de Asistencia de IA
 Se ha hecho uso de herramientas de IA Generativa (Gemini) como asistente para:
 
-* **Estructuración técnica**: Diseño general de los scripts `train.py` y `test.py` siguiendo el guión de la asignatura.
-* **Depuración de código**: Resolución de errores de tipos en el preprocesado dinámico y manejo de variables.
+* **Estructuración técnica**: Diseño de la lógica de persistencia, partición de datos y gestión de carpetas por proyecto.
+* **Depuración de código**: Resolución de problemas en el preprocesado dinámico (One-Hot Encoding con `get_dummies`) y flujos de variables.
 * **Documentación**: Redacción y formato Markdown de este archivo README.
 
 ***Nota:** Todo el código ha sido validado y testeado manualmente para asegurar su integridad y cumplimiento con los objetivos de la asignatura.*
