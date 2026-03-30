@@ -7,7 +7,7 @@ import pandas as pd  # Para manejar las tablas
 import sys  # Para leer qué CSV desde la terminal
 import pickle  # Para cargar el modelo ganador guardado en train.py
 import os  # Para las rutas de carpetas
-from sklearn.metrics import confusion_matrix, f1_score  # Fórmulas para comprobar qué tal lo ha hecho adivinando
+from sklearn.metrics import confusion_matrix, f1_score, accuracy_score, precision_score, recall_score  # Fórmulas para comprobar qué tal lo ha hecho adivinando
 from mixed_naive_bayes import MixedNB
 
 
@@ -110,7 +110,9 @@ def test():
         # Vuelve a verificar cómo calcular la nota media (binary o macro)
         avg = 'binary' if len(le.classes_) == 2 else 'macro'
         print(f"F-Score (Val): {f1_score(y_true, preds, average=avg):.4f}")
-
+        print(f"Accuracy: {accuracy_score(y_true, preds):.4f}")
+        print(f"Precisión: {precision_score(y_true, preds, average=avg, zero_division=0):.4f}")
+        print(f"Recall: {recall_score(y_true, preds, average=avg, zero_division=0):.4f}")
         # Matriz de confusión: Muestra visualmente dónde ha acertado y dónde se ha liado.
         # Filas: Lo que era en realidad. Columnas: Lo que predijo el modelo.
         print("\nMatriz de Confusión:")

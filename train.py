@@ -361,8 +361,29 @@ def train():
         # Detectamos automáticamente qué columnas son categóricas (las que tienen 2 o menos valores únicos, ej. 0 y 1)
         indices_categoricos = [i for i, col in enumerate(X_cols.columns) if X_cols[col].nunique() <= 2]
 
-        # Le pasamos los índices a la función
-        res, f1, clf, prep, comb = entrenar_nb(hp, X_train_ns, y_train_ns, X_dev_imp, y_dev, avg, indices_categoricos)
+        # Convertimos a DataFrame si son arrays de numpy para manejar mejor las columnas
+        if isinstance(X_train_ns, pd.DataFrame):
+            X_train_nb_df = X_train_ns.copy()
+            X_dev_nb_df = X_dev_imp.copy()
+        else:
+            X_train_nb_df = pd.DataFrame(X_train_ns, columns=X_cols.columns)
+            X_dev_nb_df = pd.DataFrame(X_dev_imp, columns=X_cols.columns)
+
+        for col_idx in indices_categoricos:
+            col_name = X_cols.columns[col_idx]
+
+            # Forzamos a entero para evitar problemas de float64 vs int
+            # Y usamos fit con el UNION de ambos sets para que no haya "unseen labels"
+            le_temp = LabelEncoder()
+            combined_values = pd.concat([X_train_nb_df[col_name], X_dev_nb_df[col_name]]).astype(str)
+            le_temp.fit(combined_values)
+
+            X_train_nb_df[col_name] = le_temp.transform(X_train_nb_df[col_name].astype(str))
+            X_dev_nb_df[col_name] = le_temp.transform(X_dev_nb_df[col_name].astype(str))
+
+        # Pasamos los datos limpios a la función de entrenamiento
+        res, f1, clf, prep, comb = entrenar_nb(hp, X_train_nb_df.values, y_train_ns, X_dev_nb_df.values, y_dev, avg, indices_categoricos)
+
         resultados_globales.extend(res)
         if f1 > mejor_f1_global:
             mejor_f1_global, mejor_clf_global, mejor_prep_global, nombre_mejor_global, mejor_comb_global = f1, clf, prep, "Naive Bayes", comb

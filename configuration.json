@@ -1,9 +1,9 @@
 {
-  "project_name": "Iris",
-  "algorithm": "rf",
+  "project_name": "Project",
+  "algorithm": "knn",
   "preprocessing": {
     "test_split": 0,
-    "target_variable": "Especie",
+    "target_variable": "Target",
     "drop_features": [],
     "missing_values": "impute",
     "impute_strategy": "median",
