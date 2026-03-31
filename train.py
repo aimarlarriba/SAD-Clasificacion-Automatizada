@@ -10,7 +10,7 @@ import os
 import shutil
 from datetime import datetime
 from imblearn.under_sampling import RandomUnderSampler  # Herramienta para balancear los datos si hay muchas más filas de una clase que de otra (recorta la clase mayoritaria).
-from imblearn.over_sampling import SMOTE
+from imblearn.over_sampling import SMOTE, ADASYN
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split  # Partir datos en dos trozos: uno para estudiar train y otro para test/dev.
 from sklearn.impute import SimpleImputer  # Herramienta que busca celdas vacías (nulos o NaN) y las rellena (con "median" "mean" "most_frequent").
@@ -319,10 +319,15 @@ def train():
         X_train_ns, y_train_ns = rus.fit_resample(X_train_imp, y_train)
 
     # Opción 2: Oversampling/SMOTE (crea datos sintéticos para la clase minoritaria)
-    elif estrategia_balanceo == "oversampling":
+    elif estrategia_balanceo == "smote":
         smote = SMOTE(random_state=42)
         X_train_model, y_train_model = smote.fit_resample(X_train_prep, y_train)
         X_train_ns, y_train_ns = smote.fit_resample(X_train_imp, y_train)
+
+    elif estrategia_balanceo == "adasyn":
+        adasyn = ADASYN(random_state=42)
+        X_train_model, y_train_model = adasyn.fit_resample(X_train_prep, y_train)
+        X_train_ns, y_train_ns = adasyn.fit_resample(X_train_imp, y_train)
 
     # Opción 3: Ningún balanceo
     else:

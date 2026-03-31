@@ -109,7 +109,7 @@ Configura las transformaciones que aseguran la calidad de los datos antes del en
 * **`scaling`**: Activa o desactiva el escalado $Z$-score, fundamental para algoritmos basados en distancia como KNN.
     * **Valores**: `"standard"` o `"none"`.
 * **`sampling`**: Define el método de balanceo de clases en el conjunto de entrenamiento para evitar sesgos hacia la clase mayoritaria.
-    * **Valores**: `"undersampling"`, `"oversampling"` o `"none"`.
+    * **Valores**: `"undersampling"`, `"smote"`, `"adasyn"` o `"none"`.
 
 #### 3. Hiperparámetros (`hyperparameters`)
 Define los rangos para el barrido automático (Grid Search) y la optimización de los modelos:
