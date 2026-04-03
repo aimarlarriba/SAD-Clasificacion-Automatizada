@@ -39,12 +39,12 @@ def registrar_metrica(y_true, y_pred, nom, pars, avg):
     # Recall: De todos los que de verdad eran clase X, ¿cuántos logró encontrar el modelo?
     rec = recall_score(y_true, y_pred, average=avg, zero_division=0)
     # F1 Score: Es una mezcla (media armónica) entre Precision y Recall. Es la nota en la que más nos fijamos.
-    f1 = f1_score(y_true, y_pred, average=avg)
+    f1 = f1_score(y_true, y_pred, average=avg, zero_division=0)
 
     # Devuelve un diccionario con toda la fila de resultados para el CSV y, aparte, el número suelto del F1 para comparar.
     return {
         "Combinación": f"{nom} ({pars})",
-        "Accuracy": acc, "Precisión": prec, "Recall": rec, "F_score": f1
+        "Accuracy": acc, "Precisión": prec, "Recall": rec, f"F_score_{avg}": f1
     }, f1
 
 
@@ -249,8 +249,20 @@ def train():
     le = LabelEncoder()
     y_full = le.fit_transform(df_full[target].astype(str))  # target es la columna objetivo del JSON.
 
-    # Si hay 2 clases se puntúa como 'binary', si hay más de 2 (ej. Iris tiene 3) se puntúa como 'macro'.
-    avg = 'binary' if len(le.classes_) == 2 else 'macro'
+    # Leer preferencia del JSON
+    pref_avg = config.get("average_strategy", "auto")
+
+    # Determinar el promedio real
+    num_clases = len(le.classes_)
+
+    if pref_avg == "auto":
+        avg = 'binary' if num_clases == 2 else 'macro'
+    else:
+        # Si el usuario pide macro/micro/weighted pero solo hay 2 clases,
+        # sklearn lo permite, pero 'binary' suele ser el estándar.
+        avg = pref_avg
+
+    print(f"[*] Modo de evaluación: F1-Score ({avg})")
 
     # En el JSON podemos decir si queremos separar un trozo automático para Test. Si es 0, no separa nada.
     split_pct = conf_pre.get('test_split', 0)
@@ -423,8 +435,8 @@ def train():
             'imputer': imputer, 'scaler': scaler, 'label_encoder': le,
             'columns': X_cols.columns, 'discretizer': mejor_prep_global,
             'algoritmo': nombre_mejor_global, 'f1_score': mejor_f1_global,
-            'combinacion_exacta': mejor_comb_global, 'fecha': timestamp,
-            'project_name': proyecto
+            'average_strategy': avg, 'combinacion_exacta': mejor_comb_global,
+            'fecha': timestamp, 'project_name': proyecto
         }
         pickle.dump(obj_final, open(ruta_obj_best_model, 'wb'))
 

@@ -51,8 +51,9 @@ El proyecto se organiza en torno a scripts funcionales y archivos de persistenci
 El archivo de configuración, el cual se muestra a continuación, actúa como el motor del experimento, permitiendo modificar el comportamiento de los scripts sin necesidad de editar el código fuente. 
 ```json
 {
-  "project_name": "Proyecto",
+  "project_name": "Project",
   "algorithm": "knn",
+  "average_strategy": "macro",
   "preprocessing": {
     "test_split": 0,
     "target_variable": "Target",
@@ -65,7 +66,7 @@ El archivo de configuración, el cual se muestra a continuación, actúa como el
   "hyperparameters": {
     "knn": {
       "k_min": 1,
-      "k_max": 5,
+      "k_max": 9,
       "p_min": 1,
       "p_max": 2,
       "weights": ["uniform", "distance"]
@@ -92,6 +93,8 @@ Este se divide en tres bloques principales:
 * **`project_name`**: Determina el nombre del proyecto.
 * **`algorithm`**: Permite aislar un experimento o ejecutar la comparativa completa entre algoritmos para seleccionar el mejor modelo global.
     * **Valores**: `"knn"`, `"tree"`, `"rf"`, `"nb"` o `"todos"`.
+* **`average_strategy`**: Determina el tipo de F-Score a usar.
+    * **Valores**: `"micro"`, `"macro"`, `"weighted"`, `"binary"` o `"auto"`.
 
 #### 2. Preprocesado (`preprocessing`)
 Configura las transformaciones que aseguran la calidad de los datos antes del entrenamiento:

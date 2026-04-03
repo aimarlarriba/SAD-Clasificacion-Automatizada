@@ -108,7 +108,7 @@ def test():
     # 7. EXAMINAR RESULTADOS (Si tenemos las respuestas reales)
     if y_true is not None:
         # Vuelve a verificar cómo calcular la nota media (binary o macro)
-        avg = 'binary' if len(le.classes_) == 2 else 'macro'
+        avg = pre_obj['average_strategy']
         print(f"F-Score (Val): {f1_score(y_true, preds, average=avg):.4f}")
         print(f"Accuracy: {accuracy_score(y_true, preds):.4f}")
         print(f"Precisión: {precision_score(y_true, preds, average=avg, zero_division=0):.4f}")

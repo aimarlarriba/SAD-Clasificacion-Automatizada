@@ -1,6 +1,7 @@
 {
   "project_name": "Project",
   "algorithm": "knn",
+  "average_strategy": "macro",
   "preprocessing": {
     "test_split": 0,
     "target_variable": "Target",
