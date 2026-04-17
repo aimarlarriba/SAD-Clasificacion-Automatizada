@@ -8,6 +8,7 @@ import sys
 import pickle  # pickle es la herramienta para "empaquetar" y guardar nuestro modelo ya entrenado (.sav).
 import os
 import shutil
+import string
 from datetime import datetime
 from imblearn.under_sampling import RandomUnderSampler  # Herramienta para balancear los datos si hay muchas más filas de una clase que de otra (recorta la clase mayoritaria).
 from imblearn.over_sampling import SMOTE, ADASYN
@@ -20,6 +21,10 @@ from sklearn.naive_bayes import CategoricalNB
 from mixed_naive_bayes import MixedNB
 from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_score  # Las fórmulas matemáticas para ponerle nota a nuestro modelo.
 from sklearn.preprocessing import StandardScaler, KBinsDiscretizer, LabelEncoder  # Herramientas de preprocesado: escalar números (Z-score), hacer cajas (bins) y pasar texto a números (LabelEncoder).
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
+from nltk.tokenize import word_tokenize
 
 
 # ---------------------------------------------------------
@@ -47,6 +52,20 @@ def registrar_metrica(y_true, y_pred, nom, pars, avg):
         "Accuracy": acc, "Precisión": prec, "Recall": rec, f"F_score_{avg}": f1
     }, f1
 
+
+# ---------------------------------------------------------
+# FUNCION PARA PROCESAMIENTO DE TEXTO
+# ---------------------------------------------------------
+def limpiar_texto_libre(texto, idioma):
+    stop_words = set(stopwords.words(idioma))
+    stemmer = PorterStemmer()
+
+    # Tokenización y limpieza
+    tokens = word_tokenize(str(texto).lower())
+    tokens = [t for t in tokens if t not in stop_words and t not in string.punctuation]
+    tokens = [stemmer.stem(t) for t in tokens]
+
+    return " ".join(tokens)
 
 # ---------------------------------------------------------
 # FUNCIONES DE ENTRENAMIENTO ESPECÍFICAS POR ALGORITMO
@@ -287,6 +306,37 @@ def train():
     # Si en el json pusiste "drop_features": ["ID", "Nombre"], aquí borra esas columnas porque no sirven para predecir.
     df_clean = df.drop(columns=[c for c in conf_pre.get('drop_features', []) if c in df.columns])
 
+    # --- PROCESAMIENTO DE TEXTO (CORREGIDO) ---
+    text_cfg = conf_pre.get('text_processing', {})
+    text_columns = text_cfg.get('columns', [])
+    vectorizador = None
+
+    if text_cfg.get('enabled', False) and text_columns:
+        print(f"[*] Procesando y limpiando columnas de texto: {text_columns}")
+
+        # Obtener idioma del JSON (por defecto 'english')
+        idioma = text_cfg.get('language', 'spanish')
+
+        for col in text_columns:
+            # PASO 1: Limpiar el texto (minúsculas, stopwords, stemmer)
+            df_clean[col] = df_clean[col].apply(lambda x: limpiar_texto_libre(x, idioma))
+
+        # PASO 2: Unir las columnas de texto limpias en una sola cadena para vectorizar
+        texto_unido = df_clean[text_columns].apply(lambda x: ' '.join(x), axis=1)
+
+        # PASO 3: Elegir el metodo y vectorizar
+        if text_cfg.get('method') == "bow":
+            vectorizador = CountVectorizer()
+        else:
+            vectorizador = TfidfVectorizer()
+
+        X_text = vectorizador.fit_transform(texto_unido)
+        df_text = pd.DataFrame(X_text.toarray(), columns=vectorizador.get_feature_names_out(), index=df_clean.index)
+
+        # PASO 4: Eliminar columnas originales y concatenar las numéricas
+        df_clean = df_clean.drop(columns=text_columns)
+        df_clean = pd.concat([df_clean, df_text], axis=1)
+
     # get_dummies es el One-Hot Encoding: convierte columnas de texto (ej. Color: Rojo, Verde) en varias columnas binarias (Color_Rojo: 1 o 0). drop_first=True evita redundancias matemáticas.
     X_cols = pd.get_dummies(df_clean.drop(columns=[target]), drop_first=True)
 
@@ -350,9 +400,9 @@ def train():
     # Aquí vamos guardando al mejor de entre todos los algoritmos.
     resultados_globales = []
     mejor_f1_global = -1;
-    mejor_clf_global = None;
-    mejor_prep_global = None;
-    nombre_mejor_global = "";
+    mejor_clf_global = None
+    mejor_prep_global = None
+    nombre_mejor_global = ""
     mejor_comb_global = ""
 
     # Si en el json pone "knn" o "todos", entra aquí. (Sigue la misma lógica para el resto).
@@ -436,7 +486,9 @@ def train():
             'columns': X_cols.columns, 'discretizer': mejor_prep_global,
             'algoritmo': nombre_mejor_global, 'f1_score': mejor_f1_global,
             'average_strategy': avg, 'combinacion_exacta': mejor_comb_global,
-            'fecha': timestamp, 'project_name': proyecto
+            'fecha': timestamp, 'project_name': proyecto,
+            'vectorizador_texto': vectorizador, 'text_columns_original': text_columns,
+            'language': idioma
         }
         pickle.dump(obj_final, open(ruta_obj_best_model, 'wb'))
 

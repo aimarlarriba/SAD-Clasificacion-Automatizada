@@ -9,7 +9,13 @@
     "missing_values": "impute",
     "impute_strategy": "median",
     "scaling": "standard",
-    "sampling": "undersampling"
+    "sampling": "undersampling",
+    "text_processing": {
+      "enabled": false,
+      "columns": [],
+      "method": "tf-idf",
+      "language": "spanish"
+}
   },
   "hyperparameters": {
     "knn": {

@@ -7,8 +7,24 @@ import pandas as pd  # Para manejar las tablas
 import sys  # Para leer qué CSV desde la terminal
 import pickle  # Para cargar el modelo ganador guardado en train.py
 import os  # Para las rutas de carpetas
+import string
 from sklearn.metrics import confusion_matrix, f1_score, accuracy_score, precision_score, recall_score  # Fórmulas para comprobar qué tal lo ha hecho adivinando
 from mixed_naive_bayes import MixedNB
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
+from nltk.tokenize import word_tokenize
+
+
+def limpiar_texto_libre(texto, idioma):
+    try:
+        stop_words = set(stopwords.words(idioma))
+    except:
+        stop_words = set()
+    stemmer = PorterStemmer()
+    tokens = word_tokenize(str(texto).lower())
+    tokens = [t for t in tokens if t not in stop_words and t not in string.punctuation]
+    tokens = [stemmer.stem(t) for t in tokens]
+    return " ".join(tokens)
 
 
 def test():
@@ -56,12 +72,38 @@ def test():
         # Abrimos (en modo 'rb' -> read binary) los archivos .sav y recuperamos los objetos.
         pre_obj = pickle.load(open(os.path.join(best_model_path, "preprocessing_objects.sav"), 'rb'))
         clf = pickle.load(open(os.path.join(best_model_path, "bestmodel.sav"), 'rb'))
+        target_col = pre_obj['target_variable']
+        vectorizador = pre_obj.get('vectorizador_texto')
+        text_columns = pre_obj.get('text_columns_original', [])
     except FileNotFoundError:
         print("[ERROR] Faltan archivos .sav en la carpeta del modelo.")
         sys.exit(1)
 
     # 5. PREPROCESADO IGUAL QUE EN EL TRAIN
     df = pd.read_csv(ruta_final_datos)  # Leemos los datos nuevos
+
+    # Si hay un vectorizador guardado, procesamos el texto automáticamente
+    if vectorizador is not None and len(text_columns) > 0:
+        print(f"[*] Detectado modelo de texto. Procesando columnas: {text_columns}")
+
+        # El idioma también lo podemos sacar del objeto si lo guardaste, o fijarlo a 'spanish'
+        idioma = pre_obj.get('language', 'spanish')
+
+        for col in text_columns:
+            if col in df.columns:
+                df[col] = df[col].apply(lambda x: limpiar_texto_libre(x, idioma))
+
+        texto_unido = df[text_columns].apply(lambda x: ' '.join(x), axis=1)
+        X_text_transformed = vectorizador.transform(texto_unido)
+
+        df_text_num = pd.DataFrame(X_text_transformed.toarray(),
+                                   columns=vectorizador.get_feature_names_out(),
+                                   index=df.index)
+
+        df_proc = df.drop(columns=text_columns)
+        df_proc = pd.concat([df_proc, df_text_num], axis=1)
+    else:
+        df_proc = df.copy()
 
     # Recuperamos de pre_obj las variables que el train consideró importantes
     le = pre_obj['label_encoder']  # Letras -> Números de la clase
@@ -71,9 +113,8 @@ def test():
     # Si existe la columna objetivo, guardamos las respuestas correctas en y_true transformándolas a números. Si no, le damos valor None.
     y_true = le.transform(df[target_col].astype(str)) if target_col in df.columns else None
 
-    # X son los datos que le enseñamos al modelo. Borramos la columna objetivo
-    X = df.drop(columns=[target_col]) if target_col in df.columns else df
-
+    # X son los datos que le enseñamos al modelo. Usamos df_proc que ya tiene el texto procesado
+    X = df_proc.drop(columns=[target_col]) if target_col in df_proc.columns else df_proc
     # get_dummies transforma categorías a binario.
     # .reindex(columns=pre_obj['columns']) Si el train vio "Color_Rojo" y "Color_Verde", pero en el CSV de test
     # no hay ningún rojo, get_dummies no crearía esa columna y el modelo reventaría porque le faltan datos
