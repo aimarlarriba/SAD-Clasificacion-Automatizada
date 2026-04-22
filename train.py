@@ -17,8 +17,7 @@ from sklearn.model_selection import train_test_split  # Partir datos en dos troz
 from sklearn.impute import SimpleImputer  # Herramienta que busca celdas vacías (nulos o NaN) y las rellena (con "median" "mean" "most_frequent").
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.naive_bayes import CategoricalNB
-from mixed_naive_bayes import MixedNB
+from sklearn.naive_bayes import CategoricalNB, GaussianNB
 from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_score  # Las fórmulas matemáticas para ponerle nota a nuestro modelo.
 from sklearn.preprocessing import StandardScaler, KBinsDiscretizer, LabelEncoder  # Herramientas de preprocesado: escalar números (Z-score), hacer cajas (bins) y pasar texto a números (LabelEncoder).
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
@@ -198,11 +197,11 @@ def entrenar_nb(hp, X_train_ns, y_train_ns, X_dev_imp, y_dev, avg, cat_indices):
                 mejor_prep_local = disc
                 mejor_comb_local = res["Combinación"]
 
-        # --- VERSIÓN 2: Mixed Naive Bayes ---
+        # --- VERSIÓN 2: Gaussian Naive Bayes ---
         # Le pasamos los índices detectados automáticamente y el alpha actual
-        clf_mix = MixedNB(categorical_features=cat_indices, alpha=a).fit(X_train_ns, y_train_ns)
+        clf_mix = GaussianNB().fit(X_train_ns, y_train_ns)
 
-        res, val = registrar_metrica(y_dev, clf_mix.predict(X_dev_imp), "MixedNB", f"alpha={a}", avg)
+        res, val = registrar_metrica(y_dev, clf_mix.predict(X_dev_imp), "GaussianNB", f"alpha={a}", avg)
         resultados.append(res)
 
         if val > mejor_f1_local:

@@ -9,7 +9,6 @@ import pickle  # Para cargar el modelo ganador guardado en train.py
 import os  # Para las rutas de carpetas
 import string
 from sklearn.metrics import confusion_matrix, f1_score, accuracy_score, precision_score, recall_score  # Fórmulas para comprobar qué tal lo ha hecho adivinando
-from mixed_naive_bayes import MixedNB
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
